@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "cache:clear": "rm -rf dist node_modules/.vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -20,6 +21,7 @@
     "react-dom": "catalog:",
     "tailwindcss": "catalog:",
     "dotenv": "17.2.3",
+    "swr": "catalog:",
     "vite-plugin-env-compatible": "^2.0.1"
   },
   "devDependencies": {

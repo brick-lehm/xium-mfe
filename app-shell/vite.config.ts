@@ -2,14 +2,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import federation from '@originjs/vite-plugin-federation'
 import env from "vite-plugin-env-compatible";
+import {sharedDependencies} from "./src/shared-dependencies.ts";
 
 const remotes = () => {
   const env = (process.env.ENV || 'local').toLowerCase();
-  console.log('loaded env: ', process.env.ENV);
 
   switch (env) {
     default: return {
-      sample: 'http://localhost:3001/assets/remoteEntry.js'
+      sample: 'http://localhost:3001/assets/remoteEntry.js',
     }
   }
 };
@@ -22,16 +22,12 @@ export default defineConfig({
     federation({
       name: 'app_shell',
       remotes: remotes(),
-      shared: {
-        react: {  },
-        'react-dom': {  },
-
-        '@mui/material': {},
-        '@emotion/react': {},
-        '@emotion/styled': {}
-      }
+      shared: sharedDependencies,
     })
   ],
+  resolve: {
+    dedupe: Object.keys(sharedDependencies),
+  },
   build: {
     modulePreload: false,
     target: 'esnext',

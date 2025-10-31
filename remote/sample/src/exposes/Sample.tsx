@@ -1,21 +1,18 @@
-import {SampleProps} from "../types/sample.type";
+import React from "react";
+import {ThemeProvider} from "@brick-lehm/xium-ui";
+import {SampleProps} from "sample/Sample";
 import {Button} from "@mui/material";
 
-/**
- * A sample remote component.
- *
- * @constructor
- */
-export function Sample({title}: SampleProps) {
+const Sample: React.FC<SampleProps> = ({title}) => {
+
     return (
-        <div>
-            sample {title} remote
-            <Button
-                color="primary"
-                variant="contained"
-            >
-                HOT RELOAD TEST BUTTON C
-            </Button>
-        </div>
-    )
+        <ThemeProvider defaultMode='light'>
+            <div>
+                <Button variant='contained' color='primary'>
+                    {title}
+                </Button>
+            </div>
+        </ThemeProvider>
+    );
 }
+export default Sample;
