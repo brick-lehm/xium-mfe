@@ -1,28 +1,43 @@
 #!/bin/bash
 set -e
 
-# スクリプトのディレクトリからアプリ名を自動検出
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-APP_NAME="$(basename "$(dirname "$SCRIPT_DIR")")"
-
-# デフォルトの環境名
+# デフォルト値
+APP_NAME=""
 ENV_NAME=""
 
 # コマンドライン引数を解析
 while [[ $# -gt 0 ]]; do
   case $1 in
+    -pj)
+      APP_NAME="$2"
+      shift 2
+      ;;
     -env)
       ENV_NAME="$2"
       shift 2
       ;;
     *)
       echo "不明なオプション: $1"
-      echo "使い方: $0 [-env <環境名>]"
-      echo "例: $0 -env prod  # .env.prod を読み込みます"
+      echo "使い方: $0 -pj <プロジェクト名> [-env <環境名>]"
+      echo "例: $0 -pj plan-form -env prod  # .env.prod を読み込みます"
       exit 1
       ;;
   esac
 done
+
+# APP_NAMEが指定されているか確認
+if [ -z "$APP_NAME" ]; then
+  echo "エラー: -pj オプションでプロジェクト名を指定してください"
+  echo "使い方: $0 -pj <プロジェクト名> [-env <環境名>]"
+  echo "例: $0 -pj plan-form"
+  exit 1
+fi
+
+# MFEディレクトリが存在するか確認
+if [ ! -d "remote/${APP_NAME}" ]; then
+  echo "エラー: remote/${APP_NAME} が存在しません"
+  exit 1
+fi
 
 echo "MFEビルド開始: ${APP_NAME}"
 if [ -n "$ENV_NAME" ]; then
@@ -45,20 +60,25 @@ load_env_file() {
 # アプリ固有の.envを読み込み（存在する場合）
 if [ -n "$ENV_NAME" ]; then
   # 環境指定がある場合は .env.{環境名} を読み込む
-  load_env_file "$(dirname "$SCRIPT_DIR")/.env.${ENV_NAME}"
+  load_env_file "remote/${APP_NAME}/.env.${ENV_NAME}"
 else
   # 環境指定がない場合は .env を読み込む
-  load_env_file "$(dirname "$SCRIPT_DIR")/.env"
+  load_env_file "remote/${APP_NAME}/.env"
 fi
 
-# プロジェクトルートに移動
-cd "$(dirname "$0")/../../.."
+# スクリプトのディレクトリからプロジェクトルートに移動
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$(dirname "$SCRIPT_DIR")"
 
 # 一時的に.dockerignoreをバックアップして、アプリ用のものに置き換え
 if [ -f .dockerignore ]; then
   mv .dockerignore .dockerignore.backup
 fi
-cp "remote/${APP_NAME}/.dockerignore" .dockerignore
+
+# .dockerignoreが各MFEディレクトリにある場合はコピー
+if [ -f "remote/${APP_NAME}/.dockerignore" ]; then
+  cp "remote/${APP_NAME}/.dockerignore" .dockerignore
+fi
 
 # ビルド実行（エラーが起きても必ず.dockerignoreを戻す）
 trap 'if [ -f .dockerignore.backup ]; then mv .dockerignore.backup .dockerignore; else rm -f .dockerignore; fi' EXIT
@@ -68,9 +88,9 @@ BUILD_ARGS="--build-arg APP_NAME=${APP_NAME}"
 
 # .envファイルのパスを決定
 if [ -n "$ENV_NAME" ]; then
-  ENV_FILE="$(dirname "$SCRIPT_DIR")/.env.${ENV_NAME}"
+  ENV_FILE="remote/${APP_NAME}/.env.${ENV_NAME}"
 else
-  ENV_FILE="$(dirname "$SCRIPT_DIR")/.env"
+  ENV_FILE="remote/${APP_NAME}/.env"
 fi
 
 # .envファイルから読み込んだ変数をループで追加
@@ -101,7 +121,7 @@ echo "🔨 Dockerビルドを開始します..."
 docker build \
   -t "mfe-${APP_NAME}:local" \
   $BUILD_ARGS \
-  -f "remote/${APP_NAME}/deploy/Dockerfile" \
+  -f "deploy/Dockerfile" \
   .
 
 echo ""

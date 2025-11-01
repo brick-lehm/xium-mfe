@@ -4,6 +4,7 @@ FROM node:20-alpine AS builder
 
 # ビルド引数でアプリ名を受け取る（デフォルトは"app"）
 ARG APP_NAME=app
+ARG VITE_ENV=dev
 
 # プロビジョニング
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -27,6 +28,14 @@ RUN pnpm install --filter app... && \
 # ソースコードをコピー
 COPY remote/${APP_NAME} ./remote/app
 
+# .envファイルをコピー（VITE_ENVが指定されていればそれを使い、なければ.envを使用）
+# Dockerのビルドステージでは条件分岐ができないため、シェルで処理
+RUN if [ -f /workspace/remote/app/.env.${VITE_ENV} ]; then \
+      cp /workspace/remote/app/.env.${VITE_ENV} /workspace/remote/app/.env; \
+    elif [ ! -f /workspace/remote/app/.env ]; then \
+      echo "Warning: No .env file found"; \
+    fi
+
 # ビルド
 WORKDIR /workspace/remote/app
 RUN pnpm run build
@@ -37,18 +46,20 @@ FROM nginx:alpine
 
 # ビルド引数を再度宣言してこのステージでも使えるようにする
 ARG APP_NAME=app
+ARG VITE_ENV=local
 
-# nginxの設定をコピー（appディレクトリから）
-COPY --from=builder /workspace/remote/app/deploy/nginx.conf /etc/nginx/conf.d/default.conf
+# nginxの設定をコピー（共通deployディレクトリから）
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
 
 # アプリケーションのビルド成果物をnginxの公開ディレクトリにコピー
 # APP_NAMEを使用して動的にパスを設定
 COPY --from=builder /workspace/remote/app/dist /usr/share/nginx/html/${APP_NAME}
 COPY --from=builder /workspace/remote/app/package.json /usr/share/nginx/html/${APP_NAME}/package.json
+COPY --from=builder /workspace/remote/app/.env /usr/share/nginx/html/${APP_NAME}/.env
 COPY --from=builder /workspace/pnpm-lock.yaml /usr/share/nginx/html/${APP_NAME}/pnpm-lock.yaml
 
-# エントリーポイントスクリプトを追加
-COPY --from=builder /workspace/remote/app/deploy/docker-entrypoint.sh /docker-entrypoint.sh
+# エントリーポイントスクリプトを追加（共通deployディレクトリから）
+COPY deploy/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 # 環境変数として設定
