@@ -1,0 +1,19 @@
+packages:
+  - 'app-shell'
+  - 'remote/**'
+
+catalog:
+  '@tailwindcss/vite': 4.0.12
+  '@radix-ui/themes': 3.2.1
+  tailwindcss: 4.0.12
+  react: 19.0.0
+  react-dom: 19.0.0
+  '@originjs/vite-plugin-federation': 1.4.1
+
+  "vite-plugin-env-compatible": 2.0.1
+  "@brick-lehm/xium-ui": 2.9.0
+  "@emotion/react": 11.14.0
+  "@emotion/styled": 11.14.1
+  "@mui/material": 7.3.4
+  "dayjs": 1.11.18
+  "swr": 2.3.6
